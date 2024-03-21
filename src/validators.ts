@@ -1,10 +1,10 @@
-import  { ContextRunner, ValidationError, validationResult } from 'express-validator';
+import { ContextRunner, ValidationError, validationResult } from 'express-validator';
 import { Request, Response, NextFunction } from 'express';
 
 const formatErrorMessage = (errors: ValidationError[]) => {
   return {
     status: 400,
-    errors: errors.map(({msg})=> msg)
+    errors: errors.map(({ msg }) => msg)
   }
 }
 
@@ -16,11 +16,11 @@ export const validate = (validations: ContextRunner[]) => {
     }
 
     const errors = validationResult(req);
-    if (errors.isEmpty()) {
-      return next();
+    if (!errors.isEmpty()) {
+      return res.status(400).json(formatErrorMessage(errors.array()));
     }
+    return next();
 
-    res.status(400).json(formatErrorMessage(errors.array()));
   };
 };
 

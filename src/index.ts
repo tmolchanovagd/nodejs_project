@@ -1,5 +1,5 @@
 import { AddressInfo } from 'net'
-import express, { Request, Response } from 'express';
+import express, { Request, Response} from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import path from "node:path"
@@ -8,7 +8,7 @@ import path from "node:path"
 
 import { addExercise, addUser, getAllUsers, getAllExercises, initDB, getLogs, getUserById } from './db';
 import { isUsernameValid, validate } from './validators';
-import { body, param } from 'express-validator';
+import { body, param , query} from 'express-validator';
 require('dotenv').config()
 
 
@@ -55,6 +55,7 @@ app.post(
         const id = req.params.id;
         let { description, duration, date } = req.body;
         const exerciseDate = date ? new Date(date) : new Date();
+
         try {
             const exercise = await addExercise(id, description, duration, exerciseDate)
             res.json({ ...exercise, date: exercise.date?.toDateString() })
@@ -83,21 +84,22 @@ app.get(
     '/api/users/:id/logs',
     validate([
         param('id').exists({ checkFalsy: true }).isUUID().withMessage("Invalid ID"),
-        body('from').optional({values:'falsy'}).isDate({ format: 'yyyy-mm-dd' }).withMessage('Date is invalid or has wrong format'),
-        body('to').optional({values:'falsy'}).isDate({ format: 'yyyy-mm-dd' }).withMessage('Date is invalid or has wrong format'),
-        body('limit').optional().exists({ checkFalsy: true }).isNumeric().withMessage('Invalid limit').isInt({ gt: 0 }).withMessage('Limit must be a positive number')
+        query('from').optional({values:'falsy'}).isDate({ format: 'yyyy-mm-dd' }).withMessage('Date is invalid or has wrong format'),
+        query('to').optional({values:'falsy'}).isDate({ format: 'yyyy-mm-dd' }).withMessage('Date is invalid or has wrong format'),
+        query('limit').optional().exists({ checkFalsy: true }).isNumeric().withMessage('Invalid limit').isInt({ gt: 0 }).withMessage('Limit must be a positive number')
     ]),
     async (req, res) => {
         const id = req.params.id;
         const dateFrom = req.query.from ? new Date(req.query.from as string) : undefined;
         const dateTo = req.query.to ? new Date(req.query.to as string) : undefined;
-        const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+        
         const userData = await getUserById(id)
-        const logs = await getLogs(id, dateFrom, dateTo, limit)
+        const logs = await getLogs(id, dateFrom, dateTo);
+        const limit = req.query.limit ? Math.min(parseInt(req.query.limit as string),logs.length) : logs.length;
         res.json({
             ...userData,
             count: logs.length,
-            logs
+            logs: logs.slice(0, limit)
         })
     })
 

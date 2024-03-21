@@ -15,6 +15,7 @@ const userExist = async (value: string, type: keyof DBUser, reject: (reason?: an
         status: 400,
         message: errorMessage
       });
+      return true
     }
   } catch (error) {
     console.error("Error while checking user existence:", error);
@@ -22,7 +23,9 @@ const userExist = async (value: string, type: keyof DBUser, reject: (reason?: an
       status: 500,
       message: "Internal server error"
     });
+    return true
   }
+  return false
 };
 
 export const initDB = (path: string) => {
@@ -49,8 +52,10 @@ export const getAllUsers = () => new Promise<User[]>((resolve, reject) => {
   })
 });
 
-export const getAllExercises = (userId: string) => new Promise<ExerciseResponse[]>((resolve, reject) => {
-  userExist(userId, 'user_id', reject, false)
+export const getAllExercises = (userId: string) => new Promise<ExerciseResponse[]>(async (resolve, reject) => {
+  if (await userExist(userId, 'user_id', reject, false))
+    return;
+
   db.all("SELECT * FROM exercises WHERE user_id = ?;", userId, (err, rows: Exercise[]) => {
     if (err) {
       reject(err);
@@ -65,7 +70,8 @@ export const getAllExercises = (userId: string) => new Promise<ExerciseResponse[
 export const addUser = (username: string) => {
   const id = uuidv4();
   return new Promise<User>(async (resolve, reject) => {
-    userExist(username, "username", reject, true)
+    if (await userExist(username, "username", reject, true))
+      return
     db.run('INSERT INTO users (user_id, username) VALUES (?,?)', id, username, function (err: Error) {
       if (err) {
         reject(err)
@@ -80,7 +86,9 @@ export const addUser = (username: string) => {
 export const addExercise = (userId: string, description: string, duration: number, excercise_date: Date) => {
   const _id = uuidv4();
   return new Promise<ExerciseResponse>(async (resolve, reject) => {
-    await userExist(userId, "user_id", reject, false)
+    if (await userExist(userId, "user_id", reject, false))
+      return
+
     db.run(
       'INSERT INTO exercises (_id, user_id, description, duration, exercise_date) VALUES (?,?,?,?,?)',
       _id, userId, description, duration, excercise_date.toISOString(),
@@ -88,6 +96,7 @@ export const addExercise = (userId: string, description: string, duration: numbe
         if (err) {
           reject(err)
         } else {
+          console.log(excercise_date.toISOString())
           resolve({ _id: userId, description, duration, date: excercise_date })
         }
       })
@@ -108,17 +117,16 @@ const getUserByParam = (value: string, param: keyof DBUser) => {
   })
 }
 
-export const getUserById = (user_id: string) => getUserByParam( user_id, "user_id");
+export const getUserById = (user_id: string) => getUserByParam(user_id, "user_id");
 
-export const getLogs = (userId: string, from?: Date, to?: Date, limit?: number) => new Promise<Partial<Exercise>[]>(async (resolve, reject) => {
-  await userExist(userId,'user_id', reject, false)
+export const getLogs = (userId: string, from?: Date, to?: Date) => new Promise<Partial<Exercise>[]>(async (resolve, reject) => {
+  if (await userExist(userId, 'user_id', reject, false))
+    return
   const query = "SELECT exercises.description, exercises.duration, exercises.exercise_date FROM users INNER JOIN exercises ON users.user_id = exercises.user_id WHERE users.user_id = ?";
   const fromDateQuery = from ? `AND DATE(exercises.exercise_date) >= ?` : "";
-  const toDateQuery = to ? `AND DATE(exercises.exercise_date) >= ?` : "";
-  const limitQuery = limit && limit > 0 ? `LIMIT ?` : "";
-
-
-  db.all(`${query} ${fromDateQuery} ${toDateQuery} ${limitQuery}`, userId, from, to, limit, (err: Error, rows: Partial<Exercise>[]) => {
+  const toDateQuery = to ? `AND DATE(exercises.exercise_date) <= ?` : "";
+  const args = [userId, from?.toISOString(), to?.toISOString()].filter(param => param)
+  db.all(`${query} ${fromDateQuery} ${toDateQuery}`, ...args, (err: Error, rows: Partial<Exercise>[]) => {
     if (err) {
       reject(err);
     } else {
