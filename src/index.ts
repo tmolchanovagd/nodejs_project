@@ -2,6 +2,7 @@ import { AddressInfo } from 'net'
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
+import path from "node:path"
 
 
 
@@ -18,7 +19,7 @@ app.use(bodyParser.json())
 app.use(cors())
 app.use(express.static('public'))
 app.get('/', (_req: any, res: any) => {
-    res.sendFile(__dirname + '/views/index.html')
+    res.sendFile(path.join(__dirname, '..', 'views', 'index.html'))
 });
 
 app.get('/api/users', async (_req: Request, res: Response) => {
@@ -48,7 +49,7 @@ app.post(
         param('id').exists({ checkFalsy: true }).isUUID().withMessage("Invalid ID"),
         body('date').optional({values:'falsy'}).isDate({ format: 'yyyy-mm-dd' }).withMessage('Date is invalid or has wrong format'),
         body('description').exists({ checkFalsy: true }).escape().withMessage('Description is required'),
-        body('duration').exists({ checkFalsy: true }).isNumeric().withMessage('Invalid duration')
+        body('duration').exists({ checkFalsy: true }).isNumeric().withMessage('Invalid duration').isInt({ gt: 0 }).withMessage('Duration must be a positive number')
     ]),
     async (req: Request, res: Response) => {
         const id = req.params.id;
@@ -84,7 +85,7 @@ app.get(
         param('id').exists({ checkFalsy: true }).isUUID().withMessage("Invalid ID"),
         body('from').optional({values:'falsy'}).isDate({ format: 'yyyy-mm-dd' }).withMessage('Date is invalid or has wrong format'),
         body('to').optional({values:'falsy'}).isDate({ format: 'yyyy-mm-dd' }).withMessage('Date is invalid or has wrong format'),
-        body('limit').optional().exists({ checkFalsy: true }).isNumeric().withMessage('Invalid limit')
+        body('limit').optional().exists({ checkFalsy: true }).isNumeric().withMessage('Invalid limit').isInt({ gt: 0 }).withMessage('Limit must be a positive number')
     ]),
     async (req, res) => {
         const id = req.params.id;
