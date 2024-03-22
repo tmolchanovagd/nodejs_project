@@ -119,14 +119,14 @@ const getUserByParam = (value: string, param: keyof DBUser) => {
 
 export const getUserById = (user_id: string) => getUserByParam(user_id, "user_id");
 
-export const getLogs = (userId: string, from?: Date, to?: Date) => new Promise<Partial<Exercise>[]>(async (resolve, reject) => {
+export const getLogs = (userId: string, from?: string, to?: string) => new Promise<Partial<Exercise>[]>(async (resolve, reject) => {
   if (await userExist(userId, 'user_id', reject, false))
     return
   const query = "SELECT exercises.description, exercises.duration, exercises.exercise_date FROM users INNER JOIN exercises ON users.user_id = exercises.user_id WHERE users.user_id = ?";
   const fromDateQuery = from ? `AND DATE(exercises.exercise_date) >= ?` : "";
   const toDateQuery = to ? `AND DATE(exercises.exercise_date) <= ?` : "";
-  const args = [userId, from?.toISOString(), to?.toISOString()].filter(param => param)
-  db.all(`${query} ${fromDateQuery} ${toDateQuery}`, ...args, (err: Error, rows: Partial<Exercise>[]) => {
+  const args = [userId, from, to].filter(param => param)
+  db.all(`${query} ${fromDateQuery} ${toDateQuery} ORDER BY exercises.exercise_date`, ...args, (err: Error, rows: Partial<Exercise>[]) => {
     if (err) {
       reject(err);
     } else {

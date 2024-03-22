@@ -90,8 +90,8 @@ app.get(
     ]),
     async (req, res) => {
         const id = req.params.id;
-        const dateFrom = req.query.from ? new Date(req.query.from as string) : undefined;
-        const dateTo = req.query.to ? new Date(req.query.to as string) : undefined;
+        const dateFrom = req.query.from as string | undefined;
+        const dateTo = req.query.to as string | undefined;
         
         const userData = await getUserById(id)
         const logs = await getLogs(id, dateFrom, dateTo);
